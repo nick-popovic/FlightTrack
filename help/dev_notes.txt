@@ -1,0 +1,26 @@
+######################################
+# Notes on creating venv's in python #
+######################################
+
+# create venv in folder named 'env' (by convention)
+cd <root dir of project>
+python3 -m venv env
+
+# activate venv
+cd <root dir of project>
+source env/bin/activate
+
+# deactivate venv
+deactivate
+
+
+#########################################
+# Notes on how to update python package #
+# requirements for modular development  #
+#########################################
+
+# write the requirements file
+pip freeze > requirements.txt
+
+# install the requirements file
+pip install -r requirements.txt
