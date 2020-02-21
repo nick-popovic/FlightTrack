@@ -5,24 +5,26 @@ from requests_html import HTMLSession
 from multiprocessing import Pool as ThreadPool
 import re
 
+import os
+
 
 '''
 get_flights(CARRIER_CDE) -> [str]
 Gets the list of flight summary strings for a particular carrier code
 '''
-def get_flights(CARRIER_CDE):
+def get_flights(CARRIER_CDE, offset):
+
+    ret = []
+    links_found = 0
 
     print("======== Get Flight Listings ========")
-    ret = []
 
-    URL = "https://flightaware.com/live/fleet/" + CARRIER_CDE
+    URL = "https://flightaware.com/live/fleet/"+CARRIER_CDE+"?;offset="+str(offset)
     page = requests.get(URL)
 
     soup = BeautifulSoup(page.content, 'html.parser')
 
     links = soup.findAll("a")
-
-    links_found = 0
 
     # get all links but filter out the relevant ones that give info on flights
     for link in links:
@@ -35,6 +37,7 @@ def get_flights(CARRIER_CDE):
             ret.append(flight_link)
 
     print("Found {} links".format(links_found))
+    
     return ret
 
 def flight_data_load(FLIGHT_URL):
@@ -94,6 +97,7 @@ def flight_data_load(FLIGHT_URL):
         JSON_DATA = json.loads(JSON_DATA_STRING)
         print(JSON_DATA)
         print(type(JSON_DATA))
+        print("+++found-data+++")
     except ValueError as e:
         print("Error Parsing JSON string")
 
@@ -101,23 +105,45 @@ def flight_data_load(FLIGHT_URL):
 # Entry Point
 if __name__ == '__main__':
 
-    import time
-    start_time = time.time()
-
-    WORKERS = 5
     
-    #list of flight urls to parse
-    flights = get_flights('ACA')
+    import time
+    import os
+    
+    start_time = time.time()
+    WORKERS = 5
+    offset = 0
+    keep_going = True
 
-    # Make the Pool of workers
-    pool = ThreadPool(WORKERS)
+    
+    while keep_going:
 
-    # Open the URLs in their own threads
-    # and return the results
-    results = pool.map(flight_data_load, flights)
+        #list of flight urls to parse
+        flights = get_flights('ACA', offset)
+        
+        # exit condition for loop: the run produced no links
+        if len(flights) == 0:
+            break
+        
+        
+        # Make the Pool of workers
+        pool = ThreadPool(WORKERS)
 
-    # Close the pool and wait for the work to finish
-    pool.close()
-    pool.join()
+        # Open the URLs in their own threads
+        # and return the results
+        results = pool.map(flight_data_load, flights)
+
+        # Close the pool and wait for the work to finish
+        pool.close()
+        pool.join()
+        
+
+
+        offset += 20 # try next batch of flights
+
+        print("batch# "+ str((offset/20)+1) +"complete - time to sleep ..")
+
+        os.system("killall chrome")
+        time.sleep(2)
+
 
     print("--- %s seconds ---" % (time.time() - start_time))
